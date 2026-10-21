@@ -56,8 +56,8 @@ assert_false() {
 assert_contains() {
 	local name="$1" haystack="$2" needle="$3"
 	case "$haystack" in
-	*"$needle"*) ok "$name" ;;
-	*) ko "$name" "'$needle' nicht gefunden" ;;
+		*"$needle"*) ok "$name" ;;
+		*) ko "$name" "'$needle' nicht gefunden" ;;
 	esac
 }
 
@@ -293,7 +293,7 @@ fi
 
 section "Pipeline-Rückgabewerte (set -e / pipefail)"
 for fn in config_files_for_sapi detect_web_roots apache_conf_files fpm_pool_files relevant_config_files; do
-	if ( "$fn" cli | sort -u >/dev/null ); then
+	if ("$fn" cli | sort -u >/dev/null); then
 		ok "$fn liefert Status 0 in Pipelines"
 	else
 		ko "$fn liefert Status 0 in Pipelines" "Status != 0"

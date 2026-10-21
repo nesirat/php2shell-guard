@@ -45,51 +45,51 @@ REPORT_FILE=""
 
 while [ $# -gt 0 ]; do
 	case "$1" in
-	--hosts)
-		HOSTS_FILE="$2"
-		shift
-		;;
-	--cmd)
-		CMD="$2"
-		shift
-		;;
-	--parallel)
-		PARALLEL="$2"
-		shift
-		;;
-	--sudo)
-		USE_SUDO=1
-		;;
-	--identity)
-		IDENTITY="$2"
-		shift
-		;;
-	--ssh-opts)
-		SSH_OPTS="$2"
-		shift
-		;;
-	--extra)
-		EXTRA="$2"
-		shift
-		;;
-	--out)
-		OUT_DIR="$2"
-		shift
-		;;
-	--local)
-		LOCAL_MODE=1
-		;;
-	--report)
-		REPORT_FILE="$2"
-		shift
-		;;
-	--dry-run) P2S_DRY_RUN=1 ;;
-	--yes) P2S_ASSUME_YES=1 ;;
-	--help | -h)
-		usage
-		exit 0
-		;;
-	*) die "Unbekannte Option: $1" ;;
+		--hosts)
+			HOSTS_FILE="$2"
+			shift
+			;;
+		--cmd)
+			CMD="$2"
+			shift
+			;;
+		--parallel)
+			PARALLEL="$2"
+			shift
+			;;
+		--sudo)
+			USE_SUDO=1
+			;;
+		--identity)
+			IDENTITY="$2"
+			shift
+			;;
+		--ssh-opts)
+			SSH_OPTS="$2"
+			shift
+			;;
+		--extra)
+			EXTRA="$2"
+			shift
+			;;
+		--out)
+			OUT_DIR="$2"
+			shift
+			;;
+		--local)
+			LOCAL_MODE=1
+			;;
+		--report)
+			REPORT_FILE="$2"
+			shift
+			;;
+		--dry-run) P2S_DRY_RUN=1 ;;
+		--yes) P2S_ASSUME_YES=1 ;;
+		--help | -h)
+			usage
+			exit 0
+			;;
+		*) die "Unbekannte Option: $1" ;;
 	esac
 	shift
 done

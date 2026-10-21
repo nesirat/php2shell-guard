@@ -23,11 +23,11 @@ tpl_content() {
 	fi
 	local f
 	case "$name" in
-	apache) f="$P2S_TEMPLATE_DIR/apache-php2shell-guard.conf" ;;
-	fpm) f="$P2S_TEMPLATE_DIR/php-fpm-pool-guard.conf" ;;
-	ini) f="$P2S_TEMPLATE_DIR/php-ini-guard.ini" ;;
-	nginx) f="$P2S_TEMPLATE_DIR/nginx-php2shell-guard.conf" ;;
-	*) die "Unbekanntes Template: $name" ;;
+		apache) f="$P2S_TEMPLATE_DIR/apache-php2shell-guard.conf" ;;
+		fpm) f="$P2S_TEMPLATE_DIR/php-fpm-pool-guard.conf" ;;
+		ini) f="$P2S_TEMPLATE_DIR/php-ini-guard.ini" ;;
+		nginx) f="$P2S_TEMPLATE_DIR/nginx-php2shell-guard.conf" ;;
+		*) die "Unbekanntes Template: $name" ;;
 	esac
 	[ -f "$f" ] || die "Template fehlt: $f"
 	cat "$f"
@@ -73,7 +73,8 @@ apache_dropin_path() {
 		printf '%s/etc/apache2/conf-available/php2shell-guard.conf' "$P2S_CONF_ROOT"
 	elif [ -d "${P2S_CONF_ROOT}"/etc/httpd/conf.d ]; then
 		printf '%s/etc/httpd/conf.d/php2shell-guard.conf' "$P2S_CONF_ROOT"
-	else printf ''
+	else
+		printf ''
 	fi
 }
 
@@ -200,13 +201,25 @@ mitigate_fpm() {
 		log_warn "Keine PHP-FPM-Pool-Dateien gefunden — FPM Mitigation übersprungen."
 		return 1
 	fi
-	local block
+	local block body
 	block=$(mktemp) || return 1
+	body=$(mktemp) || {
+		rm -f "$block"
+		return 1
+	}
+	# Nicht nach /dev/stdout schreiben: unter Linux ist das /proc/self/fd/1.
+	# Liegt stdout schon auf einer Datei, oeffnet ">" diese Datei mit O_TRUNC
+	# und loescht den Start-Marker, bevor der Block in den Pool wandert.
+	if ! render_template fpm "$body" "$fatal_bt"; then
+		rm -f "$block" "$body"
+		return 1
+	fi
 	{
 		printf '; >>> php2shell-guard >>>\n'
-		render_template fpm /dev/stdout "$fatal_bt"
+		cat "$body"
 		printf '; <<< php2shell-guard <<<\n'
 	} >"$block"
+	rm -f "$body"
 	local p
 	for p in $pools; do
 		log_step "FPM: Pool aktualisieren ($p)"
@@ -377,26 +390,28 @@ cmd_mitigate() {
 	local fix_overrides_flag=0
 	while [ $# -gt 0 ]; do
 		case "$1" in
-		--fix-overrides) fix_overrides_flag=1 ;;
-		--dry-run) P2S_DRY_RUN=1 ;;
-		--yes) P2S_ASSUME_YES=1 ;;
-		--post-max)
-			P2S_POST_MAX="$2"
-			shift
-			;;
-		--upload-max)
-			P2S_UPLOAD_MAX="$2"
-			shift
-			;;
-		--cgroup-limit)
-			P2S_CGROUP_LIMIT_MB="$2"
-			shift
-			;;
-		--json) P2S_JSON=1 ;;
-		*) die "Unbekannte Option für mitigate: $1" ;;
+			--fix-overrides) fix_overrides_flag=1 ;;
+			--dry-run) P2S_DRY_RUN=1 ;;
+			--yes) P2S_ASSUME_YES=1 ;;
+			--post-max)
+				P2S_POST_MAX="$2"
+				shift
+				;;
+			--upload-max)
+				P2S_UPLOAD_MAX="$2"
+				shift
+				;;
+			--cgroup-limit)
+				P2S_CGROUP_LIMIT_MB="$2"
+				shift
+				;;
+			--json) P2S_JSON=1 ;;
+			*) die "Unbekannte Option für mitigate: $1" ;;
 		esac
 		shift
 	done
+	# confirm() und andere Befehle lesen die Flags; in dieser Datei gibt es keinen weiteren Leser.
+	: "$P2S_ASSUME_YES" "$P2S_JSON"
 
 	log_step "PHP2Shell-Mitigation auf $(host_label)"
 	log_warn "Diese Maßnahmen sind temporär. Das Update auf eine gepatchte PHP-Version bleibt Pflicht."
@@ -457,16 +472,16 @@ cmd_mitigate() {
 cmd_templates() {
 	local which="${1:-all}"
 	case "$which" in
-	apache | fpm | ini | nginx)
-		tpl_content "$which"
-		;;
-	all)
-		local t
-		for t in apache fpm ini nginx; do
-			printf '\n===== %s =====\n' "$t"
-			tpl_content "$t"
-		done
-		;;
-	*) die "Unbekanntes Template: $which" ;;
+		apache | fpm | ini | nginx)
+			tpl_content "$which"
+			;;
+		all)
+			local t
+			for t in apache fpm ini nginx; do
+				printf '\n===== %s =====\n' "$t"
+				tpl_content "$t"
+			done
+			;;
+		*) die "Unbekanntes Template: $which" ;;
 	esac
 }

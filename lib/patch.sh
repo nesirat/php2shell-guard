@@ -4,44 +4,44 @@
 
 installed_php_packages() {
 	case "$(pkg_manager)" in
-	apt)
-		dpkg-query -W -f='${Package} ${Version}\n' 'php*' 2>/dev/null | grep -i php || true
-		;;
-	dnf | yum)
-		rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 2>/dev/null | grep -i php || true
-		;;
-	apk)
-		apk info -v 2>/dev/null | grep -i php || true
-		;;
-	zypper)
-		rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 2>/dev/null | grep -i php || true
-		;;
-	*)
-		printf ''
-		;;
+		apt)
+			dpkg-query -W -f='${Package} ${Version}\n' 'php*' 2>/dev/null | grep -i php || true
+			;;
+		dnf | yum)
+			rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 2>/dev/null | grep -i php || true
+			;;
+		apk)
+			apk info -v 2>/dev/null | grep -i php || true
+			;;
+		zypper)
+			rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 2>/dev/null | grep -i php || true
+			;;
+		*)
+			printf ''
+			;;
 	esac
 }
 
 upgradable_php_packages() {
 	case "$(pkg_manager)" in
-	apt)
-		apt-get -s -q upgrade 2>/dev/null | awk '/^Inst php/ {print $2}' | sort -u || true
-		;;
-	dnf)
-		dnf -q list --upgrades 2>/dev/null | awk 'NR>2 && tolower($1) ~ /^php/ {print $1}' | sort -u || true
-		;;
-	yum)
-		yum -q list updates 2>/dev/null | awk 'NR>2 && tolower($1) ~ /^php/ {print $1}' | sort -u || true
-		;;
-	apk)
-		apk upgrade --simulate 2>/dev/null | awk 'tolower($0) ~ /^php/ {print $1}' | sort -u || true
-		;;
-	zypper)
-		zypper --non-interactive list-updates 2>/dev/null | awk 'tolower($2) ~ /^php/ {print $2}' | sort -u || true
-		;;
-	*)
-		printf ''
-		;;
+		apt)
+			apt-get -s -q upgrade 2>/dev/null | awk '/^Inst php/ {print $2}' | sort -u || true
+			;;
+		dnf)
+			dnf -q list --upgrades 2>/dev/null | awk 'NR>2 && tolower($1) ~ /^php/ {print $1}' | sort -u || true
+			;;
+		yum)
+			yum -q list updates 2>/dev/null | awk 'NR>2 && tolower($1) ~ /^php/ {print $1}' | sort -u || true
+			;;
+		apk)
+			apk upgrade --simulate 2>/dev/null | awk 'tolower($0) ~ /^php/ {print $1}' | sort -u || true
+			;;
+		zypper)
+			zypper --non-interactive list-updates 2>/dev/null | awk 'tolower($2) ~ /^php/ {print $2}' | sort -u || true
+			;;
+		*)
+			printf ''
+			;;
 	esac
 }
 
@@ -71,22 +71,22 @@ apply_upgrade() {
 	local pm
 	pm=$(pkg_manager)
 	case "$pm" in
-	apt)
-		DEBIAN_FRONTEND=noninteractive apt-get install -y --only-upgrade $pkgs || return 1
-		;;
-	dnf | yum)
-		"$pm" -y upgrade $pkgs || return 1
-		;;
-	apk)
-		apk upgrade $pkgs || return 1
-		;;
-	zypper)
-		zypper --non-interactive update $pkgs || return 1
-		;;
-	*)
-		log_err "Paketmanager nicht unterstützt: $pm"
-		return 1
-		;;
+		apt)
+			DEBIAN_FRONTEND=noninteractive apt-get install -y --only-upgrade $pkgs || return 1
+			;;
+		dnf | yum)
+			"$pm" -y upgrade $pkgs || return 1
+			;;
+		apk)
+			apk upgrade $pkgs || return 1
+			;;
+		zypper)
+			zypper --non-interactive update $pkgs || return 1
+			;;
+		*)
+			log_err "Paketmanager nicht unterstützt: $pm"
+			return 1
+			;;
 	esac
 	return 0
 }
@@ -95,14 +95,15 @@ cmd_patch() {
 	local apply=0
 	while [ $# -gt 0 ]; do
 		case "$1" in
-		--apply) apply=1 ;;
-		--dry-run) P2S_DRY_RUN=1 ;;
-		--yes) P2S_ASSUME_YES=1 ;;
-		--json) P2S_JSON=1 ;;
-		*) die "Unbekannte Option für patch: $1" ;;
+			--apply) apply=1 ;;
+			--dry-run) P2S_DRY_RUN=1 ;;
+			--yes) P2S_ASSUME_YES=1 ;;
+			--json) P2S_JSON=1 ;;
+			*) die "Unbekannte Option für patch: $1" ;;
 		esac
 		shift
 	done
+	: "$P2S_ASSUME_YES" "$P2S_JSON"
 
 	log_step "PHP-Update-Prüfung auf $(host_label)"
 

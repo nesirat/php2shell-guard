@@ -39,15 +39,15 @@ cmd_report() {
 	local files=()
 	while [ $# -gt 0 ]; do
 		case "$1" in
-		--out)
-			out_md="$2"
-			shift
-			;;
-		--csv)
-			out_csv="$2"
-			shift
-			;;
-		*) files+=("$1") ;;
+			--out)
+				out_md="$2"
+				shift
+				;;
+			--csv)
+				out_csv="$2"
+				shift
+				;;
+			*) files+=("$1") ;;
 		esac
 		shift
 	done
@@ -85,9 +85,9 @@ cmd_report() {
 			[ -n "$sapi" ] || continue
 			total=$((total + 1))
 			case "$risk" in
-			critical) crit=$((crit + 1)) ;;
-			medium) mitigated=$((mitigated + 1)) ;;
-			low) patched=$((patched + 1)) ;;
+				critical) crit=$((crit + 1)) ;;
+				medium) mitigated=$((mitigated + 1)) ;;
+				low) patched=$((patched + 1)) ;;
 			esac
 			md_add "| $host | $sapi | $ver | $pat | $mit | $risk |"
 		done <<EOF

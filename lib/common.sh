@@ -4,8 +4,11 @@
 # CVE-2026-109618 / CVE-2026-109619 ("PHP2Shell")
 
 P2S_VERSION="${P2S_VERSION:-0.1.0}"
+# shellcheck disable=SC2034 # von anderen Dateien gelesen; shellcheck prueft jede Datei einzeln
 P2S_CVES="CVE-2026-109618 CVE-2026-109619"
+# shellcheck disable=SC2034
 P2S_START_MARK=">>> php2shell-guard >>>"
+# shellcheck disable=SC2034
 P2S_END_MARK="<<< php2shell-guard <<<"
 
 P2S_CONF_ROOT="${P2S_CONF_ROOT:-}"
@@ -45,8 +48,8 @@ die() {
 
 is_true() {
 	case "${1:-}" in
-	1 | true | TRUE | yes | YES | y | Y) return 0 ;;
-	*) return 1 ;;
+		1 | true | TRUE | yes | YES | y | Y) return 0 ;;
+		*) return 1 ;;
 	esac
 }
 
@@ -77,8 +80,8 @@ confirm() {
 	printf '%s%s%s [y/N] ' "$C_BOLD" "$prompt" "$C_RESET"
 	read -r answer || answer=""
 	case "$answer" in
-	y | Y | yes | YES) return 0 ;;
-	*) return 1 ;;
+		y | Y | yes | YES) return 0 ;;
+		*) return 1 ;;
 	esac
 }
 
@@ -100,7 +103,7 @@ json_bool() {
 
 # ver_ge A B -> true, wenn Version A >= B (numerisch, tolerant gegen Suffixe)
 ver_ge() {
-	local a b i x y
+	local i x y
 	local -a va vb
 	IFS=. read -r -a va <<<"${1%%-*}"
 	IFS=. read -r -a vb <<<"${2%%-*}"
@@ -132,11 +135,11 @@ ver_branch() {
 # Mindestversion mit offiziellem Fix je Branch; leer = kein Upstream-Fix (EOL)
 php_fixed_min_version() {
 	case "$1" in
-	8.5) printf '8.5.12' ;;
-	8.4) printf '8.4.27' ;;
-	8.3) printf '8.3.36' ;;
-	8.2) printf '8.2.35' ;;
-	*) printf '' ;;
+		8.5) printf '8.5.12' ;;
+		8.4) printf '8.4.27' ;;
+		8.3) printf '8.3.36' ;;
+		8.2) printf '8.2.35' ;;
+		*) printf '' ;;
 	esac
 }
 
@@ -184,19 +187,26 @@ os_version() {
 }
 
 pkg_manager() {
-	if command -v apt-get >/dev/null 2>&1; then printf 'apt'
-	elif command -v dnf >/dev/null 2>&1; then printf 'dnf'
-	elif command -v yum >/dev/null 2>&1; then printf 'yum'
-	elif command -v apk >/dev/null 2>&1; then printf 'apk'
-	elif command -v zypper >/dev/null 2>&1; then printf 'zypper'
-	else printf 'none'
+	if command -v apt-get >/dev/null 2>&1; then
+		printf 'apt'
+	elif command -v dnf >/dev/null 2>&1; then
+		printf 'dnf'
+	elif command -v yum >/dev/null 2>&1; then
+		printf 'yum'
+	elif command -v apk >/dev/null 2>&1; then
+		printf 'apk'
+	elif command -v zypper >/dev/null 2>&1; then
+		printf 'zypper'
+	else
+		printf 'none'
 	fi
 }
 
 file_backup() {
 	local f="$1"
 	[ -e "$f" ] || return 0
-	local bak="${f}.p2s-backup.$(ts_compact)"
+	local bak
+	bak="${f}.p2s-backup.$(ts_compact)"
 	cp -a "$f" "$bak" 2>/dev/null && log_ok "Backup: $bak"
 }
 
@@ -265,12 +275,14 @@ ini_value_from_files() {
 }
 
 php_ini_paths() {
-	local b="$1" p
-	for p in "$("$b" --ini 2>/dev/null | awk -F': ' '/Loaded Configuration File/ {print $2}')"; do
-		[ -n "$p" ] && [ -f "$p" ] && printf '%s\n' "$p"
-	done
-	for p in "$("$b" --ini 2>/dev/null | awk -F': ' '/Scan for additional .ini files in/ {print $2}')"; do
-		[ -d "$p" ] && printf '%s\n' "$p"
-	done
+	local b="$1" loaded scan
+	loaded=$("$b" --ini 2>/dev/null | awk -F': ' '/Loaded Configuration File/ {print $2}')
+	if [ -n "$loaded" ] && [ -f "$loaded" ]; then
+		printf '%s\n' "$loaded"
+	fi
+	scan=$("$b" --ini 2>/dev/null | awk -F': ' '/Scan for additional .ini files in/ {print $2}')
+	if [ -n "$scan" ] && [ -d "$scan" ]; then
+		printf '%s\n' "$scan"
+	fi
 	return 0
 }

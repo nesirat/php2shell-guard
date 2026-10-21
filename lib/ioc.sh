@@ -76,16 +76,16 @@ cmd_ioc() {
 	local max_files=500
 	while [ $# -gt 0 ]; do
 		case "$1" in
-		--since-days)
-			since_days="$2"
-			shift
-			;;
-		--max-files)
-			max_files="$2"
-			shift
-			;;
-		--json) P2S_JSON=1 ;;
-		*) die "Unbekannte Option für ioc: $1" ;;
+			--since-days)
+				since_days="$2"
+				shift
+				;;
+			--max-files)
+				max_files="$2"
+				shift
+				;;
+			--json) P2S_JSON=1 ;;
+			*) die "Unbekannte Option für ioc: $1" ;;
 		esac
 		shift
 	done

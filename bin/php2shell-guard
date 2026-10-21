@@ -61,38 +61,38 @@ main() {
 	[ $# -gt 0 ] && shift || true
 
 	case "$cmd" in
-	--help | -h | help)
-		usage
-		;;
-	--version | -V)
-		printf 'php2shell-guard %s\n' "$P2S_VERSION"
-		;;
-	scan)
-		cmd_scan "$@"
-		;;
-	mitigate)
-		cmd_mitigate "$@"
-		;;
-	patch)
-		cmd_patch "$@"
-		;;
-	verify)
-		cmd_verify "$@"
-		;;
-	ioc)
-		cmd_ioc "$@"
-		;;
-	report)
-		cmd_report "$@"
-		;;
-	templates)
-		cmd_templates "$@"
-		;;
-	*)
-		log_err "Unbekannter Befehl: $cmd"
-		usage
-		exit 64
-		;;
+		--help | -h | help)
+			usage
+			;;
+		--version | -V)
+			printf 'php2shell-guard %s\n' "$P2S_VERSION"
+			;;
+		scan)
+			cmd_scan "$@"
+			;;
+		mitigate)
+			cmd_mitigate "$@"
+			;;
+		patch)
+			cmd_patch "$@"
+			;;
+		verify)
+			cmd_verify "$@"
+			;;
+		ioc)
+			cmd_ioc "$@"
+			;;
+		report)
+			cmd_report "$@"
+			;;
+		templates)
+			cmd_templates "$@"
+			;;
+		*)
+			log_err "Unbekannter Befehl: $cmd"
+			usage
+			exit 64
+			;;
 	esac
 }
 

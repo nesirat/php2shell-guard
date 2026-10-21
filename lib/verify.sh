@@ -8,10 +8,10 @@ size_to_bytes() {
 	num="${v%%[!0-9]*}"
 	unit="${v#$num}"
 	case "$unit" in
-	K | k) printf '%s' $((num * 1024)) ;;
-	M | m) printf '%s' $((num * 1024 * 1024)) ;;
-	G | g) printf '%s' $((num * 1024 * 1024 * 1024)) ;;
-	*) printf '%s' "$num" ;;
+		K | k) printf '%s' $((num * 1024)) ;;
+		M | m) printf '%s' $((num * 1024 * 1024)) ;;
+		G | g) printf '%s' $((num * 1024 * 1024 * 1024)) ;;
+		*) printf '%s' "$num" ;;
 	esac
 }
 
@@ -27,7 +27,7 @@ detect_probe_roots() {
 probe_response_ok() {
 	local out="$1"
 	case "$out" in
-	*"<?php"*) return 1 ;;
+		*"<?php"*) return 1 ;;
 	esac
 	printf '%s' "$out" | grep -q 'p2s_probe=1'
 }
@@ -66,16 +66,16 @@ verify_directive() {
 	local key="$1" actual="$2" expected="$3" mode="${4:-eq}"
 	local ok=1
 	case "$mode" in
-	eq)
-		[ "$actual" = "$expected" ] || ok=0
-		;;
-	max)
-		if [ -z "$actual" ]; then
-			ok=0
-		else
-			[ "$(size_to_bytes "$actual")" -le "$(size_to_bytes "$expected")" ] || ok=0
-		fi
-		;;
+		eq)
+			[ "$actual" = "$expected" ] || ok=0
+			;;
+		max)
+			if [ -z "$actual" ]; then
+				ok=0
+			else
+				[ "$(size_to_bytes "$actual")" -le "$(size_to_bytes "$expected")" ] || ok=0
+			fi
+			;;
 	esac
 	if [ "$ok" = "1" ]; then
 		printf 'OK'
@@ -91,27 +91,28 @@ cmd_verify() {
 	local probe_path=""
 	while [ $# -gt 0 ]; do
 		case "$1" in
-		--url)
-			url="$2"
-			shift
-			;;
-		--vhost)
-			vhost="$2"
-			shift
-			;;
-		--docroot)
-			docroot="$2"
-			shift
-			;;
-		--probe-path)
-			probe_path="$2"
-			shift
-			;;
-		--json) P2S_JSON=1 ;;
-		*) die "Unbekannte Option für verify: $1" ;;
+			--url)
+				url="$2"
+				shift
+				;;
+			--vhost)
+				vhost="$2"
+				shift
+				;;
+			--docroot)
+				docroot="$2"
+				shift
+				;;
+			--probe-path)
+				probe_path="$2"
+				shift
+				;;
+			--json) P2S_JSON=1 ;;
+			*) die "Unbekannte Option für verify: $1" ;;
 		esac
 		shift
 	done
+	: "$P2S_JSON"
 
 	log_step "Verifikation der effektiven PHP-Konfiguration auf $(host_label)"
 
@@ -222,7 +223,7 @@ cmd_verify() {
 		log_err "$failed Prüfung(en) fehlgeschlagen."
 	fi
 
-	local branch fixed patched
+	local branch fixed
 	branch=$(ver_branch "$version")
 	fixed=$(php_fixed_min_version "$branch")
 	if [ -n "$fixed" ] && php_version_patched "$version" "$branch"; then

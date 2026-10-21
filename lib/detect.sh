@@ -13,7 +13,7 @@ detect_php_binaries() {
 		/opt/php*/bin/php /usr/local/php*/bin/php; do
 		[ -x "$b" ] || continue
 		case " $seen " in
-		*" $b "*) continue ;;
+			*" $b "*) continue ;;
 		esac
 		seen="$seen $b"
 		v=$(normalize_version "$("$b" -v 2>/dev/null | head -1)")
@@ -31,7 +31,7 @@ detect_fpm_binaries() {
 		/usr/local/sbin/php-fpm[0-9]*.[0-9]*; do
 		[ -x "$b" ] || continue
 		case " $seen " in
-		*" $b "*) continue ;;
+			*" $b "*) continue ;;
 		esac
 		seen="$seen $b"
 		v=$(normalize_version "$("$b" -v 2>/dev/null | head -1)")
@@ -41,10 +41,14 @@ detect_fpm_binaries() {
 }
 
 apache_ctl() {
-	if command -v apache2ctl >/dev/null 2>&1; then printf 'apache2ctl'
-	elif command -v apachectl >/dev/null 2>&1; then printf 'apachectl'
-	elif command -v httpd >/dev/null 2>&1; then printf 'httpd'
-	else printf ''
+	if command -v apache2ctl >/dev/null 2>&1; then
+		printf 'apache2ctl'
+	elif command -v apachectl >/dev/null 2>&1; then
+		printf 'apachectl'
+	elif command -v httpd >/dev/null 2>&1; then
+		printf 'httpd'
+	else
+		printf ''
 	fi
 }
 
@@ -58,9 +62,18 @@ detect_mod_php() {
 			return 0
 		fi
 	fi
-	if ls "${P2S_CONF_ROOT}"/etc/apache2/mods-enabled/*php*.load >/dev/null 2>&1; then printf 'yes'; return 0; fi
-	if ls "${P2S_CONF_ROOT}"/etc/httpd/conf.d/*php*.conf >/dev/null 2>&1; then printf 'yes'; return 0; fi
-	if ls "${P2S_CONF_ROOT}"/etc/httpd/conf.modules.d/*php*.conf >/dev/null 2>&1; then printf 'yes'; return 0; fi
+	if ls "${P2S_CONF_ROOT}"/etc/apache2/mods-enabled/*php*.load >/dev/null 2>&1; then
+		printf 'yes'
+		return 0
+	fi
+	if ls "${P2S_CONF_ROOT}"/etc/httpd/conf.d/*php*.conf >/dev/null 2>&1; then
+		printf 'yes'
+		return 0
+	fi
+	if ls "${P2S_CONF_ROOT}"/etc/httpd/conf.modules.d/*php*.conf >/dev/null 2>&1; then
+		printf 'yes'
+		return 0
+	fi
 	printf 'no'
 }
 
@@ -71,9 +84,15 @@ detect_nginx() {
 detect_cgi() {
 	local b
 	for b in php-cgi /usr/bin/php-cgi /usr/local/bin/php-cgi; do
-		if [ -x "$b" ] || command -v "$b" >/dev/null 2>&1; then printf 'yes'; return 0; fi
+		if [ -x "$b" ] || command -v "$b" >/dev/null 2>&1; then
+			printf 'yes'
+			return 0
+		fi
 	done
-	if ls -d "${P2S_CONF_ROOT}"/etc/php/*/cgi >/dev/null 2>&1; then printf 'yes'; return 0; fi
+	if ls -d "${P2S_CONF_ROOT}"/etc/php/*/cgi >/dev/null 2>&1; then
+		printf 'yes'
+		return 0
+	fi
 	printf 'no'
 }
 
@@ -109,8 +128,8 @@ fpm_pool_files() {
 	local d
 	for d in $(fpm_pool_dirs); do
 		case "$d" in
-		*/pool.d) find "$d" -maxdepth 1 -type f -name '*.conf' 2>/dev/null ;;
-		*) find "$d" -maxdepth 1 -type f -name '*.conf' 2>/dev/null ;;
+			*/pool.d) find "$d" -maxdepth 1 -type f -name '*.conf' 2>/dev/null ;;
+			*) find "$d" -maxdepth 1 -type f -name '*.conf' 2>/dev/null ;;
 		esac
 	done
 	return 0
@@ -130,6 +149,10 @@ fpm_services() {
 # Web-Roots aus Apache/nginx-Konfiguration
 detect_web_roots() {
 	local r
+	if [ -n "${P2S_WEBROOT:-}" ]; then
+		[ -d "$P2S_WEBROOT" ] && printf '%s\n' "$P2S_WEBROOT"
+		return 0
+	fi
 	for r in $(grep -rhoiE '^[[:space:]]*DocumentRoot[[:space:]]+"[^"]+"' /etc/apache2/sites-enabled /etc/apache2/conf-enabled /etc/httpd/conf 2>/dev/null |
 		sed -E 's/.*"([^"]+)"/\1/'); do
 		[ -d "$r" ] && printf '%s\n' "$r"
@@ -155,10 +178,9 @@ relevant_config_files() {
 	local f
 	for f in $(apache_conf_files); do printf '%s\n' "$f"; done
 	for f in $(fpm_pool_files); do printf '%s\n' "$f"; done
-	for f in $(find "${P2S_CONF_ROOT}"/etc/php "${P2S_CONF_ROOT}"/etc/php.d \
-		"${P2S_CONF_ROOT}"/usr/local/etc/php "${P2S_CONF_ROOT}"/usr/local/etc/php/conf.d -maxdepth 4 -type f \( -name 'php.ini' -o -name '*.ini' \) 2>/dev/null); do
-		printf '%s\n' "$f"
-	done
+	find "${P2S_CONF_ROOT}"/etc/php "${P2S_CONF_ROOT}"/etc/php.d \
+		"${P2S_CONF_ROOT}"/usr/local/etc/php "${P2S_CONF_ROOT}"/usr/local/etc/php/conf.d \
+		-maxdepth 4 -type f \( -name 'php.ini' -o -name '*.ini' \) -print 2>/dev/null || true
 	return 0
 }
 
@@ -167,38 +189,38 @@ config_files_for_sapi() {
 	local sapi="${1:-}"
 	local f
 	case "$sapi" in
-	apache2handler)
-		for f in $(apache_conf_files); do printf '%s\n' "$f"; done
-		for f in "${P2S_CONF_ROOT}"/etc/php/*/apache*/php.ini "${P2S_CONF_ROOT}"/etc/php/*/apache*/conf.d/*.ini \
-			"${P2S_CONF_ROOT}"/usr/local/etc/php/*/apache*/php.ini \
-			"${P2S_CONF_ROOT}"/usr/local/etc/php/*/apache*/conf.d/*.ini; do
-			[ -f "$f" ] && printf '%s\n' "$f"
-		done
-		;;
-	fpm)
-		for f in $(fpm_pool_files); do printf '%s\n' "$f"; done
-		for f in "${P2S_CONF_ROOT}"/etc/php/*/fpm/php.ini "${P2S_CONF_ROOT}"/etc/php/*/fpm/conf.d/*.ini \
-			"${P2S_CONF_ROOT}"/etc/php/*/fpm/pool.d/*.conf \
-			"${P2S_CONF_ROOT}"/usr/local/etc/php/*/fpm/php.ini \
-			"${P2S_CONF_ROOT}"/usr/local/etc/php/*/fpm/conf.d/*.ini; do
-			[ -f "$f" ] && printf '%s\n' "$f"
-		done
-		;;
-	cgi-fcgi)
-		for f in "${P2S_CONF_ROOT}"/etc/php/*/cgi/php.ini "${P2S_CONF_ROOT}"/etc/php/*/cgi/conf.d/*.ini \
-			"${P2S_CONF_ROOT}"/etc/php.d/*.ini \
-			"${P2S_CONF_ROOT}"/usr/local/etc/php/*/cgi/php.ini; do
-			[ -f "$f" ] && printf '%s\n' "$f"
-		done
-		;;
-	cli)
-		for f in "${P2S_CONF_ROOT}"/etc/php/*/cli/php.ini "${P2S_CONF_ROOT}"/etc/php/*/cli/conf.d/*.ini; do
-			[ -f "$f" ] && printf '%s\n' "$f"
-		done
-		;;
-	*)
-		return 0
-		;;
+		apache2handler)
+			for f in $(apache_conf_files); do printf '%s\n' "$f"; done
+			for f in "${P2S_CONF_ROOT}"/etc/php/*/apache*/php.ini "${P2S_CONF_ROOT}"/etc/php/*/apache*/conf.d/*.ini \
+				"${P2S_CONF_ROOT}"/usr/local/etc/php/*/apache*/php.ini \
+				"${P2S_CONF_ROOT}"/usr/local/etc/php/*/apache*/conf.d/*.ini; do
+				[ -f "$f" ] && printf '%s\n' "$f"
+			done
+			;;
+		fpm)
+			for f in $(fpm_pool_files); do printf '%s\n' "$f"; done
+			for f in "${P2S_CONF_ROOT}"/etc/php/*/fpm/php.ini "${P2S_CONF_ROOT}"/etc/php/*/fpm/conf.d/*.ini \
+				"${P2S_CONF_ROOT}"/etc/php/*/fpm/pool.d/*.conf \
+				"${P2S_CONF_ROOT}"/usr/local/etc/php/*/fpm/php.ini \
+				"${P2S_CONF_ROOT}"/usr/local/etc/php/*/fpm/conf.d/*.ini; do
+				[ -f "$f" ] && printf '%s\n' "$f"
+			done
+			;;
+		cgi-fcgi)
+			for f in "${P2S_CONF_ROOT}"/etc/php/*/cgi/php.ini "${P2S_CONF_ROOT}"/etc/php/*/cgi/conf.d/*.ini \
+				"${P2S_CONF_ROOT}"/etc/php.d/*.ini \
+				"${P2S_CONF_ROOT}"/usr/local/etc/php/*/cgi/php.ini; do
+				[ -f "$f" ] && printf '%s\n' "$f"
+			done
+			;;
+		cli)
+			for f in "${P2S_CONF_ROOT}"/etc/php/*/cli/php.ini "${P2S_CONF_ROOT}"/etc/php/*/cli/conf.d/*.ini; do
+				[ -f "$f" ] && printf '%s\n' "$f"
+			done
+			;;
+		*)
+			return 0
+			;;
 	esac
 	return 0
 }
@@ -330,7 +352,8 @@ detect_install_json() {
 		risk="critical"
 	fi
 
-	local cj="{\"sapi\":$(json_str "$sapi")"
+	local cj
+	cj="{\"sapi\":$(json_str "$sapi")"
 	cj="$cj,\"php_version\":$(json_str "$version")"
 	cj="$cj,\"branch\":$(json_str "$branch")"
 	cj="$cj,\"fixed_min\":$(json_str "$fixed")"
@@ -348,15 +371,14 @@ detect_install_json() {
 }
 
 cmd_scan() {
-	local webroot_override=""
 	while [ $# -gt 0 ]; do
 		case "$1" in
-		--json) P2S_JSON=1 ;;
-		--webroot)
-			webroot_override="$2"
-			shift
-			;;
-		*) die "Unbekannte Option fuer scan: $1" ;;
+			--json) P2S_JSON=1 ;;
+			--webroot)
+				P2S_WEBROOT="$2"
+				shift
+				;;
+			*) die "Unbekannte Option fuer scan: $1" ;;
 		esac
 		shift
 	done
@@ -365,9 +387,6 @@ cmd_scan() {
 	mod_php=$(detect_mod_php)
 	nginx=$(detect_nginx)
 	cgi=$(detect_cgi)
-
-	local cfg_files
-	cfg_files=$(relevant_config_files | sort -u)
 
 	local entries="" count=0
 	local rows=""
@@ -484,7 +503,16 @@ cmd_scan() {
 			risk="critical"
 			found_critical=1
 		fi
-		mit=$(detect_install_json "$sapi" "$v" "$bin" $(config_files_for_sapi "$sapi" | sort -u))
+		local -a cfgs=()
+		local cfg
+		while IFS= read -r cfg; do
+			[ -n "$cfg" ] && cfgs+=("$cfg")
+		done < <(config_files_for_sapi "$sapi" | sort -u)
+		if [ "${#cfgs[@]}" -gt 0 ]; then
+			mit=$(detect_install_json "$sapi" "$v" "$bin" "${cfgs[@]}")
+		else
+			mit=$(detect_install_json "$sapi" "$v" "$bin")
+		fi
 		missing=$(printf '%s' "$mit" | sed -n 's/.*"missing":"\([^"]*\)".*/\1/p')
 		printf '  %-14s %-12s %-10s %-10s %-9s %s\n' \
 			"$sapi" "$v" "${fixed:-kein-Fix(EOL)}" "$patched" "$risk" "${missing:-keine}"
