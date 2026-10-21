@@ -90,16 +90,24 @@ cmd_ioc() {
 		shift
 	done
 
-	log_step "IOC-Scan (Kompromittierungs-Indikatoren) auf $(host_label)"
-	log_info "Zeitfenster für 'kürzlich geändert': ${since_days} Tage"
+	if ! is_true "$P2S_JSON"; then
+		log_step "IOC-Scan (Kompromittierungs-Indikatoren) auf $(host_label)"
+		log_info "Zeitfenster für 'kürzlich geändert': ${since_days} Tage"
+	fi
 
 	local roots
 	roots=$(detect_web_roots | sort -u)
 	if [ -z "$roots" ]; then
 		log_warn "Keine Web-Roots gefunden — IOC-Scan wird übersprungen."
+		if is_true "$P2S_JSON"; then
+			printf '{"tool":"php2shell-guard","host":%s,"timestamp":"%s","findings":[]}\n' \
+				"$(json_str "$(host_label)")" "$(ts_utc)"
+		fi
 		return 0
 	fi
-	log_info "Geprüfte Roots: $(printf '%s' "$roots" | tr '\n' ' ')"
+	if ! is_true "$P2S_JSON"; then
+		log_info "Geprüfte Roots: $(printf '%s' "$roots" | tr '\n' ' ')"
+	fi
 
 	local findings=""
 	local root f
@@ -108,23 +116,23 @@ cmd_ioc() {
 	for root in $roots; do
 		[ -d "$root" ] || continue
 		for f in $(ioc_find_patterns "$root"); do
-			findings="$findings KRITISCH\twebshell-muster\t$f\tverdächtiger PHP-Code (eval/exec mit Request-Daten oder base64)\n"
+			findings="${findings}KRITISCH\twebshell-muster\t$f\tverdächtiger PHP-Code (eval/exec mit Request-Daten oder base64)\n"
 			scanned=$((scanned + 1))
 		done
 		for f in $(ioc_find_embedded_php "$root"); do
-			findings="$findings KRITISCH\tphp-in-binary\t$f\tPHP-Code in Nicht-PHP-Datei\n"
+			findings="${findings}KRITISCH\tphp-in-binary\t$f\tPHP-Code in Nicht-PHP-Datei\n"
 			scanned=$((scanned + 1))
 		done
 		for f in $(ioc_find_web_ini "$root"); do
-			findings="$findings HOCH\tweb-konfiguration\t$f\tphp.ini/.user.ini/.htaccess im Web-Root (Konfigurations-Hijacking möglich)\n"
+			findings="${findings}HOCH\tweb-konfiguration\t$f\tphp.ini/.user.ini/.htaccess im Web-Root (Konfigurations-Hijacking möglich)\n"
 			scanned=$((scanned + 1))
 		done
 		for f in $(ioc_find_world_writable "$root"); do
-			findings="$findings HOCH\tworld-writable\t$f\tPHP-Datei für alle Benutzer schreibbar\n"
+			findings="${findings}HOCH\tworld-writable\t$f\tPHP-Datei für alle Benutzer schreibbar\n"
 			scanned=$((scanned + 1))
 		done
 		for f in $(ioc_find_recent_php "$root" "$since_days" | head -"$max_files"); do
-			findings="$findings MITTEL\tzuletzt-geaendert\t$f\tPHP-Datei innerhalb von ${since_days} Tagen geändert\n"
+			findings="${findings}MITTEL\tzuletzt-geaendert\t$f\tPHP-Datei innerhalb von ${since_days} Tagen geändert\n"
 			scanned=$((scanned + 1))
 		done
 	done
@@ -136,13 +144,14 @@ cmd_ioc() {
 	fi
 
 	if is_true "$P2S_JSON"; then
-		printf '{"tool":"php2shell-guard","host":"%s","timestamp":"%s","findings":[' "$(json_str "$(host_label)")" "$(ts_utc)"
-		local first=1 line sev typ path detail
+		printf '{"tool":"php2shell-guard","host":%s,"timestamp":"%s","findings":[' \
+			"$(json_str "$(host_label)")" "$(ts_utc)"
+		local first=1 sev typ path detail
 		while IFS=$'\t' read -r sev typ path detail; do
 			[ -n "$sev" ] || continue
 			if [ "$first" = "0" ]; then printf ','; fi
 			first=0
-			printf '{"severity":"%s","type":"%s","path":"%s","detail":"%s"}' \
+			printf '{"severity":%s,"type":%s,"path":%s,"detail":%s}' \
 				"$(json_str "$sev")" "$(json_str "$typ")" "$(json_str "$path")" "$(json_str "$detail")"
 		done <<EOF
 $(printf '%b' "$findings")

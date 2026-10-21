@@ -146,7 +146,7 @@ Zusätzlich als **Dauer-Gate** (CI):
 ```yaml
 - name: PHP2Shell-Gate
   run: |
-    curl -fsSL https://raw.githubusercontent.com/<org>/php2shell-guard/main/dist/php2shell-guard.sh \
+    curl -fsSL https://github.com/nesirat/php2shell-guard/releases/download/v0.1.0/php2shell-guard.sh \
       | sudo bash -s -- scan --json
 ```
 

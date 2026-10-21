@@ -328,6 +328,18 @@ assert_true "Bundle liefert valides JSON" json_valid "$TMP/bundle.json"
 out=$(bash "$ROOT/dist/php2shell-guard.sh" templates fpm 2>&1)
 assert_contains "Bundle enthält eingebettete Templates" "$out" "php_admin_value[memory_limit] = -1"
 
+section "IOC-JSON"
+detect_web_roots() { printf '%s\n' "$TMP/web"; }
+ioc_check_logs() { return 0; }
+P2S_JSON=1
+cmd_ioc --json >"$TMP/ioc.json" 2>/dev/null
+P2S_JSON=0
+assert_true "ioc --json liefert valides JSON" json_valid "$TMP/ioc.json"
+host=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["host"])' "$TMP/ioc.json")
+assert_eq "ioc --json host ist Klartext" "$(host_label)" "$host"
+sev=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["findings"][0]["severity"])' "$TMP/ioc.json")
+assert_eq "ioc --json severity ohne Extra-Quotes" "KRITISCH" "$sev"
+
 printf '\n===============================\n'
 printf 'Erfolgreich: %d | Fehlgeschlagen: %d\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1
