@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# php2shell-fleet — Batch-Ausführung von php2shell-guard über SSH auf mehreren Hosts
+set -euo pipefail
+
+P2S_VERSION="0.1.0"
+SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+LIB_DIR="$SELF_DIR/../lib"
+
+# shellcheck source=lib/common.sh
+. "$LIB_DIR/common.sh"
+
+usage() {
+	cat <<EOF
+php2shell-fleet $P2S_VERSION — Batch-Lauf über SSH für viele Hosts
+
+Nutzung:
+  php2shell-fleet --hosts <datei> [--cmd <befehl>] [optionen]
+
+Optionen:
+  --hosts <datei>    Hostliste, eine pro Zeile (user@host, # Kommentare erlaubt)
+  --cmd <befehl>     scan (Standard) | mitigate | patch | verify | ioc
+  --parallel <n>     Anzahl paralleler Verbindungen (Standard 8)
+  --sudo             Befehl auf dem Remote-Host mit 'sudo -n' ausführen
+  --identity <key>   SSH-Identity-Datei
+  --ssh-opts "<opt>" Weitere SSH-Optionen (z.B. "-o StrictHostKeyChecking=no")
+  --extra "<args>"   Zusatzargumente für den Remote-Befehl (z.B. "--apply")
+  --out <dir>        Ergebnisverzeichnis (Standard ./fleet-results)
+  --local            Hosts lokal ausführen (ohne SSH, für Tests)
+  --report <datei>   Markdown-Report schreiben
+  --dry-run          Keine Änderungen (wird an den Remote durchgereicht)
+  --yes              Rückfragen automatisch bestätigen
+EOF
+}
+
+HOSTS_FILE=""
+CMD="scan"
+PARALLEL=8
+USE_SUDO=0
+IDENTITY=""
+SSH_OPTS="-o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new"
+EXTRA=""
+OUT_DIR="./fleet-results"
+LOCAL_MODE=0
+REPORT_FILE=""
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--hosts)
+		HOSTS_FILE="$2"
+		shift
+		;;
+	--cmd)
+		CMD="$2"
+		shift
+		;;
+	--parallel)
+		PARALLEL="$2"
+		shift
+		;;
+	--sudo)
+		USE_SUDO=1
+		;;
+	--identity)
+		IDENTITY="$2"
+		shift
+		;;
+	--ssh-opts)
+		SSH_OPTS="$2"
+		shift
+		;;
+	--extra)
+		EXTRA="$2"
+		shift
+		;;
+	--out)
+		OUT_DIR="$2"
+		shift
+		;;
+	--local)
+		LOCAL_MODE=1
+		;;
+	--report)
+		REPORT_FILE="$2"
+		shift
+		;;
+	--dry-run) P2S_DRY_RUN=1 ;;
+	--yes) P2S_ASSUME_YES=1 ;;
+	--help | -h)
+		usage
+		exit 0
+		;;
+	*) die "Unbekannte Option: $1" ;;
+	esac
+	shift
+done
+
+[ -n "$HOSTS_FILE" ] || {
+	usage
+	die "--hosts fehlt"
+}
+[ -f "$HOSTS_FILE" ] || die "Hostliste nicht gefunden: $HOSTS_FILE"
+
+BUNDLE="$SELF_DIR/../dist/php2shell-guard.sh"
+if [ "$LOCAL_MODE" = "0" ] && [ ! -f "$BUNDLE" ]; then
+	die "Bundle fehlt: $BUNDLE — bitte 'make bundle' ausführen."
+fi
+
+mkdir -p "$OUT_DIR"
+
+WORKDIR=$(mktemp -d) || die "Kein temporäres Verzeichnis"
+trap 'rm -rf "$WORKDIR"' EXIT
+
+HELPER="$WORKDIR/run-one.sh"
+cat >"$HELPER" <<'HELPER_EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+host="$1"
+safe=$(printf '%s' "$host" | tr -c 'A-Za-z0-9._-' '_')
+outdir="${RESULTS_DIR}/${safe}"
+mkdir -p "$outdir"
+remote_cmd="${CMD}"
+JSON_FLAG=""
+# JSON-Ausgabe fuer maschinenlesbare Ergebnisse erzwingen
+case "${CMD}" in
+scan | ioc)
+	case " ${EXTRA} " in
+	*" --json "*) ;;
+	*) JSON_FLAG="--json" ;;
+	esac
+	;;
+esac
+remote_cmd="$remote_cmd $EXTRA $JSON_FLAG"
+if [ "${USE_SUDO}" = "1" ]; then
+	remote_cmd="sudo -n bash -s -- ${remote_cmd}"
+else
+	remote_cmd="bash -s -- ${remote_cmd}"
+fi
+if [ "${LOCAL_MODE}" = "1" ]; then
+	# shellcheck disable=SC2086
+	bash "${BUNDLE_PATH}" ${CMD} ${EXTRA} ${JSON_FLAG} >"${outdir}/result.json" 2>"${outdir}/stderr.txt"
+	rc=$?
+else
+	# shellcheck disable=SC2086
+	ssh ${SSH_OPTS} ${IDENTITY_ARG} "$host" "$remote_cmd" <"${BUNDLE_PATH}" >"${outdir}/result.json" 2>"${outdir}/stderr.txt"
+	rc=$?
+fi
+case "$rc" in
+0) printf 'OK      %s\n' "$host" ;;
+2) printf 'KRITISCH %s (ungepatchte PHP-Version gefunden)\n' "$host" ;;
+*) printf 'FEHLER  %s (rc=%s)\n' "$host" "$rc" ;;
+esac
+exit 0
+HELPER_EOF
+chmod +x "$HELPER"
+
+export RESULTS_DIR="$OUT_DIR"
+export BUNDLE_PATH="$BUNDLE"
+export CMD EXTRA USE_SUDO LOCAL_MODE SSH_OPTS
+export IDENTITY_ARG=""
+if [ -n "$IDENTITY" ]; then
+	export IDENTITY_ARG="-i $IDENTITY"
+fi
+
+log_step "Fleet-Lauf: $CMD auf $(grep -cvE '^\s*(#|$)' "$HOSTS_FILE") Hosts (parallel=$PARALLEL)"
+log_info "Ergebnisse: $OUT_DIR"
+
+grep -vE '^\s*(#|$)' "$HOSTS_FILE" |
+	tr '\n' '\0' |
+	xargs -0 -P "$PARALLEL" -n 1 "$HELPER"
+
+log ""
+log_step "Ergebnisübersicht"
+ls -1 "$OUT_DIR" | while IFS= read -r d; do
+	[ -d "$OUT_DIR/$d" ] || continue
+	if [ -s "$OUT_DIR/$d/result.json" ]; then
+		printf '  OK      %s\n' "$d"
+	else
+		printf '  FEHLER  %s\n' "$d"
+		[ -s "$OUT_DIR/$d/stderr.txt" ] && sed 's/^/          /' "$OUT_DIR/$d/stderr.txt"
+	fi
+done
+
+if [ -n "$REPORT_FILE" ]; then
+	# shellcheck source=lib/report.sh
+	. "$LIB_DIR/report.sh"
+	cmd_report --out "$REPORT_FILE" "$OUT_DIR"/*/result.json || true
+	log_ok "Report: $REPORT_FILE"
+fi

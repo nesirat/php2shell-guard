@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Testsuite
+        run: ./tests/run-tests.sh
+
+      - name: Shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck -x -S warning bin/php2shell-guard bin/php2shell-fleet lib/*.sh tools/*.sh tests/run-tests.sh
+
+      - name: shfmt
+        run: |
+          sudo apt-get install -y shfmt
+          shfmt -d -i 0 -ci bin/ lib/ tools/ tests/
+
+      - name: Bundle baut und laeuft
+        run: |
+          ./tools/build-bundle.sh
+          bash dist/php2shell-guard.sh scan --json
+          bash dist/php2shell-guard.sh templates all > /dev/null
+
+  scan-self:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Eigenes Repository scannen
+        run: |
+          ./tools/build-bundle.sh
+          bash dist/php2shell-guard.sh scan --json || true

@@ -1,0 +1,6 @@
+dist/
+fleet-results/
+*.bak
+*.p2s-backup.*
+*.tmp
+.DS_Store

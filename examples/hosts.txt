@@ -1,0 +1,11 @@
+# Hostliste fuer php2shell-fleet / Ansible-Inventar
+# Eine Zeile pro Host, optional "user@host". Kommentare mit #, Leerzeilen erlaubt.
+
+# --- Produktiv ---
+root@10.0.0.11
+deploy@10.0.0.12
+web01.example.org
+
+# --- Test ---
+# root@10.0.0.21
+# root@10.0.0.22

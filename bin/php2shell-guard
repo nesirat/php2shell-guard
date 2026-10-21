@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# php2shell-guard — Detection, Mitigation und Patch für PHP2Shell
+# CVE-2026-109618 / CVE-2026-109619
+set -euo pipefail
+
+P2S_VERSION="0.1.0"
+SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+LIB_DIR="$SELF_DIR/../lib"
+
+# shellcheck source=lib/common.sh
+. "$LIB_DIR/common.sh"
+# shellcheck source=lib/detect.sh
+. "$LIB_DIR/detect.sh"
+# shellcheck source=lib/mitigate.sh
+. "$LIB_DIR/mitigate.sh"
+# shellcheck source=lib/patch.sh
+. "$LIB_DIR/patch.sh"
+# shellcheck source=lib/verify.sh
+. "$LIB_DIR/verify.sh"
+# shellcheck source=lib/ioc.sh
+. "$LIB_DIR/ioc.sh"
+# shellcheck source=lib/report.sh
+. "$LIB_DIR/report.sh"
+
+usage() {
+	cat <<EOF
+php2shell-guard $P2S_VERSION — Schutz gegen PHP2Shell (CVE-2026-109618 / CVE-2026-109619)
+
+Nutzung:
+  php2shell-guard <befehl> [optionen]
+
+Befehle:
+  scan        PHP-Versionen, SAPIs und Mitigation-Status inventarisieren
+  mitigate    Temporäre Mitigation anwenden (Apache/FPM/CGI/nginx) + Worker-Neustart
+  patch       PHP-Pakete auf gepatchte Version aktualisieren (--apply zum Ausführen)
+  verify      Effektive PHP-Konfiguration über HTTP prüfen (Probe-Datei)
+  ioc         Kompromittierungs-Indikatoren suchen
+  report      JSON-Ergebnisse zu einem Markdown-/CSV-Report zusammenführen
+  templates   Anzuwendende Konfigurations-Templates anzeigen
+
+Globale Optionen:
+  --json      Maschinenlesbare Ausgabe (scan/ioc)
+  --dry-run   Keine Änderungen durchführen
+  --yes       Rückfragen automatisch bestätigen
+  --version   Version anzeigen
+  --help      Diese Hilfe anzeigen
+
+Beispiele:
+  php2shell-guard scan --json
+  php2shell-guard mitigate --dry-run
+  php2shell-guard patch --apply
+  php2shell-guard verify --url https://example.org/ --vhost example.org
+  php2shell-guard ioc --since-days 30
+
+Referenz: https://www.php.net/archive/2026.php#2026-10-21-5
+EOF
+}
+
+main() {
+	local cmd="${1:-help}"
+	[ $# -gt 0 ] && shift || true
+
+	case "$cmd" in
+	--help | -h | help)
+		usage
+		;;
+	--version | -V)
+		printf 'php2shell-guard %s\n' "$P2S_VERSION"
+		;;
+	scan)
+		cmd_scan "$@"
+		;;
+	mitigate)
+		cmd_mitigate "$@"
+		;;
+	patch)
+		cmd_patch "$@"
+		;;
+	verify)
+		cmd_verify "$@"
+		;;
+	ioc)
+		cmd_ioc "$@"
+		;;
+	report)
+		cmd_report "$@"
+		;;
+	templates)
+		cmd_templates "$@"
+		;;
+	*)
+		log_err "Unbekannter Befehl: $cmd"
+		usage
+		exit 64
+		;;
+	esac
+}
+
+main "$@"

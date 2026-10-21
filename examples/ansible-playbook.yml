@@ -1,0 +1,93 @@
+---
+# php2shell-guard als Ansible-Rolle — Beispiel-Playbook
+#
+# Nutzung:
+#   ansible-playbook -i examples/hosts.txt examples/ansible-playbook.yml --check
+#   ansible-playbook -i examples/hosts.txt examples/ansible-playbook.yml --tags mitigation
+#
+# Voraussetzung: das Single-File-Bundle liegt auf dem Control-Host vor
+# (make bundle) und wird per copy/script verteilt.
+
+- name: PHP2Shell — Inventar, Mitigation und Patch
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    p2s_bundle_local: "{{ playbook_dir }}/../dist/php2shell-guard.sh"
+    p2s_bundle_remote: /usr/local/share/php2shell-guard/php2shell-guard.sh
+    p2s_post_max: 8M
+    p2s_upload_max: 8M
+    p2s_cgroup_limit_mb: 1024
+
+  tasks:
+    - name: Bundle verteilen
+      copy:
+        src: "{{ p2s_bundle_local }}"
+        dest: "{{ p2s_bundle_remote }}"
+        mode: "0755"
+
+    - name: Bestand aufnehmen (read-only)
+      command: "bash {{ p2s_bundle_remote }} scan --json"
+      register: p2s_scan
+      changed_when: false
+      failed_when: false
+
+    - name: Scan-Ergebnis ausgeben
+      debug:
+        var: p2s_scan.stdout
+      when: p2s_scan.stdout | length > 0
+
+    - name: Kritische Hosts markieren
+      set_fact:
+        p2s_critical: "{{ (p2s_scan.stdout | from_json).installs | selectattr('risk', 'equalto', 'critical') | list | length > 0 }}"
+      when: p2s_scan.stdout | length > 0
+
+    - name: "Mitigation anwenden (PHP 8.1 ist EOL — nur Notfallschutz)"
+      command: >-
+        bash {{ p2s_bundle_remote }} mitigate
+        --post-max {{ p2s_post_max }}
+        --upload-max {{ p2s_upload_max }}
+        --cgroup-limit {{ p2s_cgroup_limit_mb }}
+        --yes
+      when:
+        - p2s_critical | default(false)
+        - ansible_check_mode is not true
+      tags: [mitigation]
+
+    - name: PHP-Pakete aktualisieren
+      package:
+        name:
+          - php
+          - php-cli
+          - php-fpm
+          - libapache2-mod-php
+        state: latest
+      when:
+        - p2s_critical | default(false)
+        - ansible_check_mode is not true
+      tags: [patch]
+
+    - name: Dienste neu starten
+      service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - php-fpm
+        - apache2
+      when:
+        - p2s_critical | default(false)
+        - ansible_check_mode is not true
+      tags: [patch]
+
+    - name: Gegenprobe
+      command: "bash {{ p2s_bundle_remote }} scan"
+      register: p2s_verify
+      changed_when: false
+      failed_when: false
+      when: p2s_critical | default(false)
+
+    - name: Ergebnis
+      debug:
+        var: p2s_verify.stdout_lines
+      when: p2s_verify.stdout is defined
