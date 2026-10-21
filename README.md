@@ -34,6 +34,7 @@ PHP-FPM ist ebenfalls betroffen (State wird nachgelagert publiziert), aber
 nicht im selben Ausmaß anwendungsunabhängig.
 
 Details: [`docs/MITIGATION.md`](docs/MITIGATION.md) · [`docs/ADVISORY-2026-10-21.md`](docs/ADVISORY-2026-10-21.md)
+Vollständige Bedienungsanleitung: **[`docs/MANUAL.md`](docs/MANUAL.md)**
 
 ---
 
@@ -198,6 +199,9 @@ versehentlich in Produktion landen.
 | `templates` | anzuwendende Config anzeigen | keine |
 
 Globale Optionen: `--json`, `--dry-run`, `--yes`, `--version`, `--help`.
+
+Vollständige Kommando-Referenz, Troubleshooting, FAQ und Betriebs-/Rollout-Handbuch:
+**[`docs/MANUAL.md`](docs/MANUAL.md)** (EN: [`docs/MANUAL.en.md`](docs/MANUAL.en.md)).
 
 ---
 

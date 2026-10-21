@@ -32,6 +32,7 @@ line of application code executes. PHP-FPM is affected too (state is published
 later), but not to the same application-independent degree.
 
 Details: [`docs/MITIGATION.md`](docs/MITIGATION.md) · [`docs/ADVISORY-2026-10-21.md`](docs/ADVISORY-2026-10-21.md)
+Complete operator guide: **[`docs/MANUAL.en.md`](docs/MANUAL.en.md)**
 
 ---
 
@@ -177,6 +178,9 @@ production unnoticed.
 | `templates` | show the configuration that would be applied | none |
 
 Global options: `--json`, `--dry-run`, `--yes`, `--version`, `--help`.
+
+Full command reference, troubleshooting, FAQ and operations guide:
+**[`docs/MANUAL.en.md`](docs/MANUAL.en.md)** (DE: [`docs/MANUAL.md`](docs/MANUAL.md)).
 
 ---
 
