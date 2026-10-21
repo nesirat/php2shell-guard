@@ -27,7 +27,7 @@ Projektversion nach [SemVer](https://semver.org/lang/de/).
 - `php2shell-fleet` — parallele Ausführung über SSH auf ganze Host-Flotten.
 - `dist/php2shell-guard.sh` — Single-File-Bundle (alle Bibliotheken und
   Templates eingebettet, keine Abhängigkeiten).
-- Testsuite (`tests/run-tests.sh`, 53 Tests) inkl. Regressionstests für
+- Testsuite (`tests/run-tests.sh`, 74 Tests) inkl. Regressionstests für
   Konfigurationsauswertung, JSON-Erzeugung, Report-Parsing und
   BSD-/GNU-sed-Kompatibilität.
 

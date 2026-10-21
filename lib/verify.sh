@@ -23,6 +23,21 @@ detect_probe_roots() {
 	done
 }
 
+# Antwort muss von PHP erzeugt sein: kein roher Quelltext, Marker vorhanden
+probe_response_ok() {
+	local out="$1"
+	case "$out" in
+	*"<?php"*) return 1 ;;
+	esac
+	printf '%s' "$out" | grep -q 'p2s_probe=1'
+}
+
+# Wert aus einer Probe-Antwort auslesen
+probe_value() {
+	local out="$1" key="$2"
+	printf '%s' "$out" | awk -F= -v k="$key" '$1==k {print substr($0, index($0,"=")+1)}' | tail -1
+}
+
 probe_file_content() {
 	cat <<'EOF'
 <?php
@@ -73,6 +88,7 @@ cmd_verify() {
 	local url=""
 	local vhost=""
 	local docroot=""
+	local probe_path=""
 	while [ $# -gt 0 ]; do
 		case "$1" in
 		--url)
@@ -85,6 +101,10 @@ cmd_verify() {
 			;;
 		--docroot)
 			docroot="$2"
+			shift
+			;;
+		--probe-path)
+			probe_path="$2"
 			shift
 			;;
 		--json) P2S_JSON=1 ;;
@@ -116,10 +136,18 @@ cmd_verify() {
 	fi
 
 	local probe="$roots/__p2s_probe_$$.php"
-	log_info "Probe: $probe -> $url"
+	local probe_name="${probe##*/}"
+	local fetch_url
+	if [ -n "$probe_path" ]; then
+		fetch_url="${url%/}/${probe_path#/}"
+	else
+		fetch_url="${url%/}/${probe_name}"
+	fi
+	log_info "Probe-Datei: $probe"
+	log_info "Abruf: $fetch_url"
 
 	if is_true "$P2S_DRY_RUN"; then
-		log_dry "would probe $url"
+		log_dry "would fetch $fetch_url"
 		return 0
 	fi
 
@@ -133,34 +161,37 @@ cmd_verify() {
 	if [ -n "$vhost" ]; then
 		curl_opts="$curl_opts -H Host:$vhost"
 	fi
-	out=$(curl $curl_opts "$url" 2>/dev/null || true)
+	out=$(curl $curl_opts "$fetch_url" 2>/dev/null || true)
 	rm -f "$probe"
 
-	if [ -z "$out" ] || ! printf '%s' "$out" | grep -q 'p2s_probe=1'; then
-		log_err "Probe nicht abrufbar (URL=$url). Ist PHP unter dieser URL erreichbar?"
+	if [ -z "$out" ]; then
+		log_err "Probe nicht abrufbar (URL=$fetch_url). Ist PHP unter dieser URL erreichbar?"
+		log_err "Bei abweichendem DocRoot: --probe-path <URL-Pfad> angeben."
+		return 1
+	fi
+	if ! probe_response_ok "$out"; then
+		log_err "Probe-Antwort enthält keinen ausgeführten PHP-Output (URL=$fetch_url)."
+		log_err "Der Webserver liefert die Datei offenbar als Quelltext aus (mod_php/FPM korrekt konfiguriert?)."
 		return 1
 	fi
 
 	local sapi version
-	sapi=$(printf '%s' "$out" | awk -F= '/^sapi=/{print $2}')
-	version=$(printf '%s' "$out" | awk -F= '/^version=/{print $2}')
-
-	local val
-	val() { printf '%s' "$out" | awk -F= -v k="$1" '$1==k {print substr($0, index($0,"=")+1)}' | tail -1; }
+	sapi=$(probe_value "$out" sapi)
+	version=$(probe_value "$out" version)
 
 	log ""
 	log_info "SAPI: $sapi | Version: $version"
 	log ""
 
 	local ml sup pms umf min miv mfu feb
-	ml=$(val memory_limit)
-	sup=$(val session.upload_progress.enabled)
-	pms=$(val post_max_size)
-	umf=$(val upload_max_filesize)
-	min=$(val max_input_nesting_level)
-	miv=$(val max_input_vars)
-	mfu=$(val max_file_uploads)
-	feb=$(val fatal_error_backtraces)
+	ml=$(probe_value "$out" memory_limit)
+	sup=$(probe_value "$out" session.upload_progress.enabled)
+	pms=$(probe_value "$out" post_max_size)
+	umf=$(probe_value "$out" upload_max_filesize)
+	min=$(probe_value "$out" max_input_nesting_level)
+	miv=$(probe_value "$out" max_input_vars)
+	mfu=$(probe_value "$out" max_file_uploads)
+	feb=$(probe_value "$out" fatal_error_backtraces)
 
 	local failed=0
 	row() {

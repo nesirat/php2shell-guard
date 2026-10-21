@@ -89,9 +89,10 @@ sudo ./bin/php2shell-guard patch --apply
 ./bin/php2shell-guard ioc --since-days 30
 ```
 
-`verify` legt temporär eine Probe-Datei im Web-Root ab, liest die **effektive**
-Konfiguration über HTTP aus (nicht die Datei — das ist der Unterschied, der zählt)
-und löscht die Probe wieder.
+`verify` legt temporär eine Probe-Datei im Web-Root ab, ruft **diese Datei**
+über HTTP ab, liest die **effektive** Konfiguration aus (nicht die Datei auf
+der Platte — das ist der Unterschied, der zählt) und löscht die Probe wieder.
+Liegt der DocRoot nicht auf dem URL-Root, `--probe-path <URL-Pfad>` angeben.
 
 ---
 

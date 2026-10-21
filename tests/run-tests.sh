@@ -17,6 +17,8 @@ trap 'rm -rf "$TMP"' EXIT
 . "$ROOT/lib/mitigate.sh"
 # shellcheck source=lib/report.sh
 . "$ROOT/lib/report.sh"
+# shellcheck source=lib/verify.sh
+. "$ROOT/lib/verify.sh"
 # shellcheck source=lib/ioc.sh
 . "$ROOT/lib/ioc.sh"
 
@@ -210,6 +212,77 @@ assert_eq "fatal_error_backtraces ohne 8.5 entfernt" "0" "$(grep -c 'fatal_error
 
 export P2S_CONF_ROOT=""
 export PATH="${PATH#"$TMP/stub:"}"
+
+section "Verify (Probe-Antwort)"
+probe_out='p2s_probe=1
+sapi=fpm
+version=8.3.36
+memory_limit=-1
+session.upload_progress.enabled=0
+post_max_size=8M
+upload_max_filesize=8M
+max_input_nesting_level=16
+max_input_vars=1000
+max_file_uploads=10
+fatal_error_backtraces=0'
+assert_true "gültige Probe-Antwort wird akzeptiert" probe_response_ok "$probe_out"
+assert_eq "Wert wird korrekt gelesen" "8M" "$(probe_value "$probe_out" post_max_size)"
+assert_eq "Wert mit Punkt im Namen" "0" "$(probe_value "$probe_out" session.upload_progress.enabled)"
+assert_false "roher PHP-Quelltext wird abgelehnt" probe_response_ok '<?php echo "p2s_probe=1"; ?>'
+assert_false "leere Antwort wird abgelehnt" probe_response_ok ""
+
+if command -v python3 >/dev/null 2>&1; then
+	mkdir -p "$TMP/webserv"
+	cat >"$TMP/mock_php.py" <<'PYEOF'
+import http.server, socketserver, sys
+
+BODY = b"p2s_probe=1\nsapi=apache2handler\nversion=8.1.2\nmemory_limit=512M\nsession.upload_progress.enabled=1\npost_max_size=8M\nupload_max_filesize=2M\nmax_input_nesting_level=64\nmax_input_vars=1000\nmax_file_uploads=20\n"
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(BODY)))
+        self.end_headers()
+        self.wfile.write(BODY)
+
+    def log_message(self, *args):
+        pass
+
+
+socketserver.TCPServer(("127.0.0.1", int(sys.argv[1])), Handler).serve_forever()
+PYEOF
+	port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
+	python3 "$TMP/mock_php.py" "$port" >/dev/null 2>&1 &
+	srvpid=$!
+	ready=0
+	for _ in 1 2 3 4 5 6 7 8 9 10; do
+		sleep 0.3
+		if curl -s --max-time 2 "http://127.0.0.1:${port}/" | grep -q 'p2s_probe=1'; then
+			ready=1
+			break
+		fi
+	done
+	if [ "$ready" = "1" ]; then
+		out=$("$ROOT/bin/php2shell-guard" verify --docroot "$TMP/webserv" --url "http://127.0.0.1:${port}/" 2>&1)
+		rc=$?
+		assert_contains "verify meldet nicht wirksames memory_limit" "$out" "memory_limit"
+		assert_contains "verify erkennt PHP-Version" "$out" "8.1.2"
+		assert_contains "verify meldet Fehlgeschlagene Prüfungen" "$out" "Prüfung"
+		assert_true "verify meldet Fehler bei fehlender Mitigation (rc != 0)" test "$rc" -ne 0
+		if ls "$TMP/webserv"/__p2s_probe_*.php >/dev/null 2>&1; then
+			ko "Probe-Datei wird wieder entfernt" "Datei liegt noch im Web-Root"
+		else
+			ok "Probe-Datei wird wieder entfernt"
+		fi
+	else
+		printf '  [SKIP] verify-HTTP-Test (Mock-Server nicht startbar)\n'
+	fi
+	kill "$srvpid" >/dev/null 2>&1
+else
+	printf '  [SKIP] verify-HTTP-Test (python3 nicht verfügbar)\n'
+fi
 
 section "sed-Portabilität (BSD/GNU)"
 if grep -rnE "sed [^|]*\\\\\|" "$ROOT/lib" "$ROOT/bin" >/dev/null 2>&1; then

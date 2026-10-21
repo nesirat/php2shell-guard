@@ -80,9 +80,10 @@ sudo ./bin/php2shell-guard patch --apply
 ./bin/php2shell-guard ioc --since-days 30
 ```
 
-`verify` drops a temporary probe into the web root, reads the **effective**
-configuration over HTTP (not the file — that is the difference that matters)
-and removes the probe again.
+`verify` drops a temporary probe into the web root, fetches **that file** over
+HTTP, reads the **effective** configuration from the response (not the file on
+disk — that is the difference that matters) and removes the probe again.
+Use `--probe-path <url-path>` when the doc root is not the URL root.
 
 ---
 
