@@ -29,7 +29,12 @@ jobs:
       - name: Bundle baut und laeuft
         run: |
           ./tools/build-bundle.sh
-          bash dist/php2shell-guard.sh scan --json
+          # Exit 2 ist ein Befund (ungepatchtes PHP auf dem Runner), kein Werkzeugfehler.
+          rc=0
+          bash dist/php2shell-guard.sh scan --json || rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 2 ]; then
+            exit "$rc"
+          fi
           bash dist/php2shell-guard.sh templates all > /dev/null
 
   scan-self:
@@ -39,4 +44,8 @@ jobs:
       - name: Eigenes Repository scannen
         run: |
           ./tools/build-bundle.sh
-          bash dist/php2shell-guard.sh scan --json || true
+          rc=0
+          bash dist/php2shell-guard.sh scan --json || rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 2 ]; then
+            exit "$rc"
+          fi
