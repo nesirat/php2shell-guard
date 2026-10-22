@@ -13,7 +13,7 @@ Keine Installation, keine Abhängigkeiten. Eine Datei, die per stdin auf den
 Zielhost kopiert wird.
 
 ```bash
-git clone git@github.com:nesirat/php2shell-guard.git
+git clone https://github.com/nesirat/php2shell-guard.git
 cd php2shell-guard
 make bundle
 ls -l dist/php2shell-guard.sh
@@ -22,7 +22,7 @@ ls -l dist/php2shell-guard.sh
 Auf dem Zielhost:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nesirat/php2shell-guard/main/dist/php2shell-guard.sh \
+curl -fsSL https://github.com/nesirat/php2shell-guard/releases/download/v0.1.0/php2shell-guard.sh \
   | sudo bash -s -- scan --json
 ```
 
@@ -292,7 +292,7 @@ Details: [`FLEET.md`](FLEET.md).
 ```yaml
 - name: PHP2Shell-Gate
   run: |
-    curl -fsSL https://raw.githubusercontent.com/nesirat/php2shell-guard/main/dist/php2shell-guard.sh \
+    curl -fsSL https://github.com/nesirat/php2shell-guard/releases/download/v0.1.0/php2shell-guard.sh \
       | sudo bash -s -- scan --json
 ```
 

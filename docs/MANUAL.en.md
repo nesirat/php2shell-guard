@@ -11,7 +11,7 @@
 No installation, no dependencies — one file copied to the target host via stdin.
 
 ```bash
-git clone git@github.com:nesirat/php2shell-guard.git
+git clone https://github.com/nesirat/php2shell-guard.git
 cd php2shell-guard
 make bundle
 ```
@@ -19,7 +19,7 @@ make bundle
 On the target host:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nesirat/php2shell-guard/main/dist/php2shell-guard.sh \
+curl -fsSL https://github.com/nesirat/php2shell-guard/releases/download/v0.1.0/php2shell-guard.sh \
   | sudo bash -s -- scan --json
 ```
 
@@ -227,7 +227,7 @@ Useful for integrating the configuration into Ansible, Puppet or Git.
 ```yaml
 - name: PHP2Shell-Gate
   run: |
-    curl -fsSL https://raw.githubusercontent.com/nesirat/php2shell-guard/main/dist/php2shell-guard.sh \
+    curl -fsSL https://github.com/nesirat/php2shell-guard/releases/download/v0.1.0/php2shell-guard.sh \
       | sudo bash -s -- scan --json
 ```
 

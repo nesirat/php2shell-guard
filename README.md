@@ -40,6 +40,11 @@ Vollständige Bedienungsanleitung: **[`docs/MANUAL.md`](docs/MANUAL.md)**
 
 ## Schnellstart
 
+```bash
+git clone https://github.com/nesirat/php2shell-guard.git
+cd php2shell-guard
+```
+
 ### 1. Bestand aufnehmen (read-only, ohne Rechte)
 
 ```bash

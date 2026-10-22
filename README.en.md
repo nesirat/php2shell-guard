@@ -38,6 +38,11 @@ Complete operator guide: **[`docs/MANUAL.en.md`](docs/MANUAL.en.md)**
 
 ## Quick start
 
+```bash
+git clone https://github.com/nesirat/php2shell-guard.git
+cd php2shell-guard
+```
+
 ### 1. Inventory (read-only, no privileges)
 
 ```bash

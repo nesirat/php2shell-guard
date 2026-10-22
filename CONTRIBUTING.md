@@ -7,7 +7,7 @@ sind besonders willkommen.
 ## Entwicklung
 
 ```bash
-git clone <repo>
+git clone https://github.com/nesirat/php2shell-guard.git
 cd php2shell-guard
 make test          # Testsuite
 make lint          # shellcheck (falls installiert)
